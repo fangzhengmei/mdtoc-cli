@@ -488,7 +488,17 @@ class TestYAMLFrontMatterDetection:
     def test_detect_front_matter_unclosed(self):
         lines = ["---", "title: Test", "# Heading"]
         end = detect_yaml_front_matter(lines)
-        assert end == 3
+        assert end == 0
+    
+    def test_detect_front_matter_markdown_heading_only(self):
+        lines = ["---", "# Markdown Heading", "---", "# Real Heading"]
+        end = detect_yaml_front_matter(lines)
+        assert end == 0
+    
+    def test_detect_front_matter_mixed_yaml_and_markdown(self):
+        lines = ["---", "title: Test", "# Heading", "---"]
+        end = detect_yaml_front_matter(lines)
+        assert end == 4
     
     def test_detect_front_matter_with_comments(self):
         lines = [
@@ -573,3 +583,67 @@ title: Test
         assert headings[0].text == "Heading 1"
         assert headings[1].text == "Heading 2"
         assert headings[2].text == "Heading 3"
+    
+    def test_markdown_heading_in_dashes_block_not_front_matter(self):
+        content = """---
+# First Heading
+---
+# Second Heading
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 2
+        assert headings[0].text == "First Heading"
+        assert headings[1].text == "Second Heading"
+    
+    def test_unclosed_front_matter_should_not_skip(self):
+        content = """---
+title: No closing
+# Is this a heading?
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 1
+        assert headings[0].text == "Is this a heading?"
+    
+    def test_mixed_yaml_and_markdown_in_block(self):
+        content = """---
+title: Test
+# Heading Inside
+---
+# Real Heading
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 1
+        assert headings[0].text == "Real Heading"
+    
+    def test_front_matter_with_yaml_list(self):
+        content = """---
+title: Test
+tags:
+  - tag1
+  - tag2
+---
+
+# After Front Matter
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 1
+        assert headings[0].text == "After Front Matter"
+    
+    def test_front_matter_with_yaml_dict(self):
+        content = """---
+title: Test
+metadata:
+  author: John
+  date: 2024
+---
+
+# Real Heading
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 1
+        assert headings[0].text == "Real Heading"

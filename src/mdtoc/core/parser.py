@@ -65,6 +65,32 @@ def is_code_block(line: str, in_code_block: bool, code_fence: str = "") -> Tuple
     return in_code_block, code_fence
 
 
+def is_markdown_heading(line: str) -> bool:
+    stripped = line.strip()
+    return re.match(r"^#{1,6}\s+.+$", stripped) is not None
+
+
+def looks_like_yaml(line: str) -> bool:
+    stripped = line.strip()
+    
+    if not stripped or stripped.startswith("#"):
+        return True
+    
+    if re.match(r"^[\w\-]+\s*:", stripped):
+        return True
+    
+    if stripped in ("---", "..."):
+        return True
+    
+    if stripped.startswith("- "):
+        return True
+    
+    if stripped.startswith("[") or stripped.startswith("{"):
+        return True
+    
+    return False
+
+
 def detect_yaml_front_matter(lines: List[str]) -> int:
     if not lines:
         return 0
@@ -73,12 +99,30 @@ def detect_yaml_front_matter(lines: List[str]) -> int:
     if first_line != "---":
         return 0
     
+    close_marker_index = -1
+    has_yaml_content = False
+    has_markdown_heading = False
+    
     for i in range(1, len(lines)):
         stripped = lines[i].strip()
+        
         if stripped in ("---", "..."):
-            return i + 1
+            close_marker_index = i
+            break
+        
+        if is_markdown_heading(lines[i]):
+            has_markdown_heading = True
+        
+        if looks_like_yaml(stripped) and not stripped.startswith("#"):
+            has_yaml_content = True
     
-    return len(lines)
+    if close_marker_index == -1:
+        return 0
+    
+    if has_markdown_heading and not has_yaml_content:
+        return 0
+    
+    return close_marker_index + 1
 
 
 def extract_headings(content: str, slug_style: str = "github") -> List[Heading]:
