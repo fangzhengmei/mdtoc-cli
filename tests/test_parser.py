@@ -160,6 +160,129 @@ const x = 1;
         assert headings[0].text == "Real Heading"
         assert headings[1].text == "After Indented Block"
     
+    def test_skip_cpp_code_block(self):
+        content = """# Before C++ Code
+```c++
+// This is a C++ comment
+# define MACRO // not a heading
+int main() {
+    return 0;
+}
+```
+## After C++ Code
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 2
+        assert headings[0].text == "Before C++ Code"
+        assert headings[1].text == "After C++ Code"
+    
+    def test_skip_bash_session_code_block(self):
+        content = """# Before Bash Session
+```bash-session
+$ echo "hello"
+# This is a shell comment, not a heading
+$ ls
+```
+## After Bash Session
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 2
+        assert headings[0].text == "Before Bash Session"
+        assert headings[1].text == "After Bash Session"
+    
+    def test_skip_csharp_code_block(self):
+        content = """# Before C# Code
+```c#
+// C# comment
+#region MyRegion // not a heading
+public class Hello { }
+```
+## After C# Code
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 2
+        assert headings[0].text == "Before C# Code"
+        assert headings[1].text == "After C# Code"
+    
+    def test_skip_fsharp_code_block(self):
+        content = """# Before F# Code
+```f#
+// F# comment
+#nowarn "40" // compiler directive, not a heading
+let hello = "world"
+```
+## After F# Code
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 2
+        assert headings[0].text == "Before F# Code"
+        assert headings[1].text == "After F# Code"
+    
+    def test_skip_objective_c_code_block(self):
+        content = """# Before Objective-C Code
+```objective-c
+// Objective-C comment
+#import <Foundation/Foundation.h> // #import, not a heading
+int main() { }
+```
+## After Objective-C Code
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 2
+        assert headings[0].text == "Before Objective-C Code"
+        assert headings[1].text == "After Objective-C Code"
+    
+    def test_skip_html_jinja_code_block(self):
+        content = """# Before HTML+Jinja
+```html+jinja
+<!-- HTML comment -->
+{# Jinja comment, not a heading #}
+<h1>Title</h1>
+```
+## After HTML+Jinja
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 2
+        assert headings[0].text == "Before HTML+Jinja"
+        assert headings[1].text == "After HTML+Jinja"
+    
+    def test_tilde_cpp_code_block(self):
+        content = """# Before Code
+~~~c++
+# define SOMETHING
+~~~
+## After Code
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 2
+        assert headings[0].text == "Before Code"
+        assert headings[1].text == "After Code"
+    
+    def test_multiple_special_language_blocks(self):
+        content = """# Start
+```c++
+# define
+```
+## Middle
+```bash-session
+# shell comment
+```
+### End
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 3
+        assert headings[0].text == "Start"
+        assert headings[1].text == "Middle"
+        assert headings[2].text == "End"
+    
     def test_line_numbers(self):
         content = """Line 1
 # Heading 1
@@ -298,3 +421,43 @@ class TestCodeBlockDetection:
         in_code, fence = is_code_block("~~~", True, "```")
         assert in_code is True
         assert fence == "```"
+    
+    def test_is_code_block_cpp_language(self):
+        in_code, fence = is_code_block("```c++", False, "")
+        assert in_code is True
+        assert fence == "```"
+    
+    def test_is_code_block_bash_session(self):
+        in_code, fence = is_code_block("```bash-session", False, "")
+        assert in_code is True
+        assert fence == "```"
+    
+    def test_is_code_block_csharp(self):
+        in_code, fence = is_code_block("```c#", False, "")
+        assert in_code is True
+        assert fence == "```"
+    
+    def test_is_code_block_fsharp(self):
+        in_code, fence = is_code_block("```f#", False, "")
+        assert in_code is True
+        assert fence == "```"
+    
+    def test_is_code_block_with_dots(self):
+        in_code, fence = is_code_block("```objective-c", False, "")
+        assert in_code is True
+        assert fence == "```"
+    
+    def test_is_code_block_tilde_with_symbols(self):
+        in_code, fence = is_code_block("~~~c++", False, "")
+        assert in_code is True
+        assert fence == "~~~"
+    
+    def test_is_code_block_complex_language_tag(self):
+        in_code, fence = is_code_block("```html+jinja", False, "")
+        assert in_code is True
+        assert fence == "```"
+    
+    def test_is_code_block_ending_with_special_language(self):
+        in_code, fence = is_code_block("```c++", True, "```")
+        assert in_code is False
+        assert fence == ""

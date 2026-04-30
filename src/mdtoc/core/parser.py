@@ -52,7 +52,7 @@ def _simple_slugify(text: str) -> str:
 
 
 def is_code_block(line: str, in_code_block: bool, code_fence: str = "") -> Tuple[bool, str]:
-    fenced_pattern = r"^(\s*)(```|~~~)(\w*)\s*$"
+    fenced_pattern = r"^(\s*)(```|~~~)([^\s`~]*)\s*$"
     
     match = re.match(fenced_pattern, line)
     if match:
