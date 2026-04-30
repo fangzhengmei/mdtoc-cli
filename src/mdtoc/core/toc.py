@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 from .parser import Heading
 
 
@@ -7,6 +7,7 @@ def generate_toc_list(headings: List[Heading],
                       min_level: int = 1,
                       ordered: bool = False) -> List[str]:
     toc_lines = []
+    counters: Dict[int, int] = {}
     
     for heading in headings:
         if heading.level < min_level:
@@ -14,14 +15,18 @@ def generate_toc_list(headings: List[Heading],
         if max_level is not None and heading.level > max_level:
             continue
         
-        indent = "  " * (heading.level - min_level)
+        effective_level = heading.level - min_level
+        indent = "  " * effective_level
         text = heading.text
         link = f"#{heading.slug}"
         
         if ordered:
-            # Ordered list handling - need to track count per level
-            # For simplicity, we'll use a simple approach
-            toc_lines.append(f"{indent}- [{text}]({link})")
+            counters[effective_level] = counters.get(effective_level, 0) + 1
+            for level in list(counters.keys()):
+                if level > effective_level:
+                    del counters[level]
+            
+            toc_lines.append(f"{indent}{counters[effective_level]}. [{text}]({link})")
         else:
             toc_lines.append(f"{indent}- [{text}]({link})")
     

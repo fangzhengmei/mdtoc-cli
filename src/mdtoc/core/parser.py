@@ -65,6 +65,22 @@ def is_code_block(line: str, in_code_block: bool, code_fence: str = "") -> Tuple
     return in_code_block, code_fence
 
 
+def detect_yaml_front_matter(lines: List[str]) -> int:
+    if not lines:
+        return 0
+    
+    first_line = lines[0].strip()
+    if first_line != "---":
+        return 0
+    
+    for i in range(1, len(lines)):
+        stripped = lines[i].strip()
+        if stripped in ("---", "..."):
+            return i + 1
+    
+    return len(lines)
+
+
 def extract_headings(content: str, slug_style: str = "github") -> List[Heading]:
     lines = content.split("\n")
     headings = []
@@ -72,7 +88,12 @@ def extract_headings(content: str, slug_style: str = "github") -> List[Heading]:
     in_code_block = False
     code_fence = ""
     
+    front_matter_end = detect_yaml_front_matter(lines)
+    
     for line_num, line in enumerate(lines, 1):
+        if line_num <= front_matter_end:
+            continue
+        
         in_code_block, code_fence = is_code_block(line, in_code_block, code_fence)
         if in_code_block:
             continue

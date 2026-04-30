@@ -6,6 +6,7 @@ from mdtoc.core.parser import (
     generate_slug,
     parse_md_file,
     is_code_block,
+    detect_yaml_front_matter,
     Heading,
     _github_slugify,
     _gitlab_slugify,
@@ -461,3 +462,114 @@ class TestCodeBlockDetection:
         in_code, fence = is_code_block("```c++", True, "```")
         assert in_code is False
         assert fence == ""
+
+
+class TestYAMLFrontMatterDetection:
+    def test_detect_front_matter_simple(self):
+        lines = ["---", "title: Test", "---", "# Heading"]
+        end = detect_yaml_front_matter(lines)
+        assert end == 3
+    
+    def test_detect_front_matter_with_dots_end(self):
+        lines = ["---", "title: Test", "...", "# Heading"]
+        end = detect_yaml_front_matter(lines)
+        assert end == 3
+    
+    def test_detect_front_matter_no_start(self):
+        lines = ["# Heading", "---", "content"]
+        end = detect_yaml_front_matter(lines)
+        assert end == 0
+    
+    def test_detect_front_matter_empty(self):
+        lines = []
+        end = detect_yaml_front_matter(lines)
+        assert end == 0
+    
+    def test_detect_front_matter_unclosed(self):
+        lines = ["---", "title: Test", "# Heading"]
+        end = detect_yaml_front_matter(lines)
+        assert end == 3
+    
+    def test_detect_front_matter_with_comments(self):
+        lines = [
+            "---",
+            "title: My Document",
+            "# This is a YAML comment",
+            "tags: [test]",
+            "---",
+            "# Real Heading"
+        ]
+        end = detect_yaml_front_matter(lines)
+        assert end == 5
+
+
+class TestYAMLFrontMatterIntegration:
+    def test_skip_yaml_comments_in_front_matter(self):
+        content = """---
+title: My Document
+# This is a YAML comment
+tags: [test]
+---
+
+# First Heading
+## Second Heading
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 2
+        assert headings[0].text == "First Heading"
+        assert headings[1].text == "Second Heading"
+    
+    def test_yaml_front_matter_at_start_only(self):
+        content = """# Heading Before
+---
+This is not front matter
+---
+# Heading After
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 2
+        assert headings[0].text == "Heading Before"
+        assert headings[1].text == "Heading After"
+    
+    def test_complex_yaml_front_matter(self):
+        content = """---
+# YAML comment at start
+title: Test Document
+# Another YAML comment
+author: John Doe
+---
+
+## Section 1
+### Subsection
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 2
+        assert headings[0].text == "Section 1"
+        assert headings[1].text == "Subsection"
+    
+    def test_yaml_front_matter_with_dots_ending(self):
+        content = """---
+title: Test
+...
+
+# First Heading
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 1
+        assert headings[0].text == "First Heading"
+    
+    def test_no_front_matter_normal_document(self):
+        content = """# Heading 1
+## Heading 2
+### Heading 3
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 3
+        assert headings[0].text == "Heading 1"
+        assert headings[1].text == "Heading 2"
+        assert headings[2].text == "Heading 3"

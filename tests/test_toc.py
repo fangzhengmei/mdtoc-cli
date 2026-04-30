@@ -74,6 +74,81 @@ class TestGenerateTOCList:
         assert toc == []
 
 
+class TestOrderedTOCList:
+    def test_ordered_toc_simple(self):
+        content = """# Level 1
+## Level 2a
+## Level 2b
+"""
+        headings = extract_headings(content)
+        toc = generate_toc_list(headings, ordered=True)
+        
+        assert len(toc) == 3
+        assert toc[0] == "1. [Level 1](#level-1)"
+        assert toc[1] == "  1. [Level 2a](#level-2a)"
+        assert toc[2] == "  2. [Level 2b](#level-2b)"
+    
+    def test_ordered_toc_multiple_levels(self):
+        content = """# A
+## B
+### C
+## D
+# E
+## F
+"""
+        headings = extract_headings(content)
+        toc = generate_toc_list(headings, ordered=True)
+        
+        assert len(toc) == 6
+        assert toc[0] == "1. [A](#a)"
+        assert toc[1] == "  1. [B](#b)"
+        assert toc[2] == "    1. [C](#c)"
+        assert toc[3] == "  2. [D](#d)"
+        assert toc[4] == "2. [E](#e)"
+        assert toc[5] == "  1. [F](#f)"
+    
+    def test_ordered_toc_with_min_level(self):
+        content = """# Level 1
+## Level 2a
+### Level 3
+## Level 2b
+"""
+        headings = extract_headings(content)
+        toc = generate_toc_list(headings, ordered=True, min_level=2)
+        
+        assert len(toc) == 3
+        assert toc[0] == "1. [Level 2a](#level-2a)"
+        assert toc[1] == "  1. [Level 3](#level-3)"
+        assert toc[2] == "2. [Level 2b](#level-2b)"
+    
+    def test_ordered_toc_with_max_level(self):
+        content = """# 1
+## 2
+### 3
+#### 4
+"""
+        headings = extract_headings(content)
+        toc = generate_toc_list(headings, ordered=True, max_level=2)
+        
+        assert len(toc) == 2
+        assert toc[0] == "1. [1](#1)"
+        assert toc[1] == "  1. [2](#2)"
+    
+    def test_ordered_vs_unordered(self):
+        content = """# A
+# B
+"""
+        headings = extract_headings(content)
+        
+        toc_unordered = generate_toc_list(headings, ordered=False)
+        toc_ordered = generate_toc_list(headings, ordered=True)
+        
+        assert toc_unordered[0] == "- [A](#a)"
+        assert toc_unordered[1] == "- [B](#b)"
+        assert toc_ordered[0] == "1. [A](#a)"
+        assert toc_ordered[1] == "2. [B](#b)"
+
+
 class TestGenerateTOCString:
     def test_generate_toc_with_title(self):
         content = """# Title
