@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mdtoc"
+version = "0.1.0"
+description = "Markdown TOC generator CLI tool"
+requires-python = ">=3.8"
+dependencies = [
+    "click>=8.0.0",
+]
+
+[project.scripts]
+mdtoc = "mdtoc.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mdtoc"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
