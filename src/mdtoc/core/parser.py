@@ -51,12 +51,32 @@ def _simple_slugify(text: str) -> str:
     return text
 
 
+def is_code_block(line: str, in_code_block: bool, code_fence: str = "") -> Tuple[bool, str]:
+    fenced_pattern = r"^(\s*)(```|~~~)(\w*)\s*$"
+    
+    match = re.match(fenced_pattern, line)
+    if match:
+        fence = match.group(2)
+        if not in_code_block:
+            return True, fence
+        elif fence == code_fence:
+            return False, ""
+    
+    return in_code_block, code_fence
+
+
 def extract_headings(content: str, slug_style: str = "github") -> List[Heading]:
     lines = content.split("\n")
     headings = []
     existing_slugs: Dict[str, int] = {}
+    in_code_block = False
+    code_fence = ""
     
     for line_num, line in enumerate(lines, 1):
+        in_code_block, code_fence = is_code_block(line, in_code_block, code_fence)
+        if in_code_block:
+            continue
+        
         match = re.match(r"^(#{1,6})\s+(.+)$", line)
         if match:
             level = len(match.group(1))

@@ -5,6 +5,7 @@ from mdtoc.core.parser import (
     extract_headings,
     generate_slug,
     parse_md_file,
+    is_code_block,
     Heading,
     _github_slugify,
     _gitlab_slugify,
@@ -47,13 +48,117 @@ More text
 # This is a heading
 This is also not a heading
 ## Another heading
-Not a heading either
+```
+# This is a code block, not a heading
+```
 """
         headings = extract_headings(content)
         
         assert len(headings) == 2
         assert headings[0].text == "This is a heading"
         assert headings[1].text == "Another heading"
+    
+    def test_skip_code_block_backticks(self):
+        content = """# Real Heading
+```python
+# This is a comment, not a heading
+def hello():
+    pass
+```
+## Another Real Heading
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 2
+        assert headings[0].text == "Real Heading"
+        assert headings[1].text == "Another Real Heading"
+    
+    def test_skip_code_block_tilde(self):
+        content = """# Real Heading
+~~~python
+# This is a comment, not a heading
+def hello():
+    pass
+~~~
+## Another Real Heading
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 2
+        assert headings[0].text == "Real Heading"
+        assert headings[1].text == "Another Real Heading"
+    
+    def test_skip_code_block_with_language(self):
+        content = """# Before Code
+```javascript
+// # This is not a heading
+const x = 1;
+```
+# After Code
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 2
+        assert headings[0].text == "Before Code"
+        assert headings[1].text == "After Code"
+    
+    def test_nested_headings_around_code_blocks(self):
+        content = """# Level 1
+## Level 2
+```
+# Not a heading
+## Also not
+```
+### Level 3
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 3
+        assert headings[0].level == 1
+        assert headings[1].level == 2
+        assert headings[2].level == 3
+    
+    def test_multiple_code_blocks(self):
+        content = """# Heading 1
+```
+# Fake
+```
+# Heading 2
+~~~
+# Also fake
+~~~
+# Heading 3
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 3
+        assert headings[0].text == "Heading 1"
+        assert headings[1].text == "Heading 2"
+        assert headings[2].text == "Heading 3"
+    
+    def test_unclosed_code_block(self):
+        content = """# Valid Heading
+```
+# This is in an unclosed block
+# Another one
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 1
+        assert headings[0].text == "Valid Heading"
+    
+    def test_indented_code_block_fence(self):
+        content = """# Real Heading
+    ```python
+    # Indented code block
+    ```
+## After Indented Block
+"""
+        headings = extract_headings(content)
+        
+        assert len(headings) == 2
+        assert headings[0].text == "Real Heading"
+        assert headings[1].text == "After Indented Block"
     
     def test_line_numbers(self):
         content = """Line 1
@@ -151,3 +256,45 @@ More content
             assert headings[1].slug == "header-one-1"
         finally:
             os.unlink(temp_path)
+
+
+class TestCodeBlockDetection:
+    def test_is_code_block_backtick_start(self):
+        in_code, fence = is_code_block("```", False, "")
+        assert in_code is True
+        assert fence == "```"
+    
+    def test_is_code_block_backtick_end(self):
+        in_code, fence = is_code_block("```", True, "```")
+        assert in_code is False
+        assert fence == ""
+    
+    def test_is_code_block_tilde_start(self):
+        in_code, fence = is_code_block("~~~", False, "")
+        assert in_code is True
+        assert fence == "~~~"
+    
+    def test_is_code_block_tilde_end(self):
+        in_code, fence = is_code_block("~~~", True, "~~~")
+        assert in_code is False
+        assert fence == ""
+    
+    def test_is_code_block_with_language(self):
+        in_code, fence = is_code_block("```python", False, "")
+        assert in_code is True
+        assert fence == "```"
+    
+    def test_is_code_block_indented_fence(self):
+        in_code, fence = is_code_block("    ```", False, "")
+        assert in_code is True
+        assert fence == "```"
+    
+    def test_is_code_block_not_fence(self):
+        in_code, fence = is_code_block("# This is a heading", False, "")
+        assert in_code is False
+        assert fence == ""
+    
+    def test_is_code_block_different_fence_mismatch(self):
+        in_code, fence = is_code_block("~~~", True, "```")
+        assert in_code is True
+        assert fence == "```"
